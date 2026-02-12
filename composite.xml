@@ -1,0 +1,146 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<composite xmlns="http://xmlns.oracle.com/sca/1.0" xmlns:orawsp="http://schemas.oracle.com/ws/2006/01/policy" xmlns:sca-ext="http://xmlns.oracle.com/sca/1.0-ext" xmlns:ui="http://xmlns.oracle.com/soa/designer/" xmlns:wsp="http://schemas.xmlsoap.org/ws/2004/09/policy" xmlns:xs="http://www.w3.org/2001/XMLSchema" label="2018-01-29_12-46-18_566" mode="active" name="IvaraToCESProxy" revision="1.0" state="on">
+   <import location="oramds:/soa/shared/workflow/NotificationService.wsdl"/>
+   <import importType="wsdl" location="oramds:/soa/shared/workflow/NotificationService.wsdl" namespace="http://xmlns.oracle.com/ias/pcbpel/NotificationService"/>
+   <import importType="wsdl" location="oramds:/apps/epcor/ivara/composites/NotificationGroups/NotificationGroups.wsdl" namespace="urn:epcor:as:ivara:integration:NotificationGroups"/>
+   <import importType="wsdl" location="Adapters/ReadWRChanges_IvaraDB.wsdl" namespace="http://xmlns.oracle.com/pcbpel/adapter/db/Ivara/IvaraToCESProxy/ReadWRChanges_IvaraDB"/>
+   <import importType="wsdl" location="Adapters/UpdateWRChanges_Ivara.wsdl" namespace="http://xmlns.oracle.com/pcbpel/adapter/db/Ivara/IvaraToCESProxy/UpdateWRChanges_Ivara"/>
+   <import importType="wsdl" location="WSDLs/ProjectsService.svc.wsdl" namespace="http://tempuri.org/"/>
+   <import importType="wsdl" location="WSDLs/ProjectsService.svcWrapper.wsdl" namespace="http://tempuri.org/"/>
+   <import namespace="http://xmlns.oracle.com/pcbpel/adapter/db/IvaraGenericAPI/IvaraToCESProxy/FromGmtConverter"
+           location="WSDLs/FromGmtConverter.wsdl" importType="wsdl"/>
+   <import namespace="http://xmlns.oracle.com/IvaraGenericAPI/IvaraToCESProxy/GmtConverterMediator"
+           location="WSDLs/GmtConverterMediator.wsdl" importType="wsdl"/>
+   <import namespace="http://xmlns.oracle.com/IvaraGenericAPI/IvaraToCESProxy/GmtConverterMediator"
+           location="WSDLs/GmtConverterMediatorWrapper.wsdl" importType="wsdl"/>
+   <service name="ReadWRChanges_IvaraDB" ui:wsdlLocation="Adapters/ReadWRChanges_IvaraDB.wsdl">
+      <interface.wsdl interface="http://xmlns.oracle.com/pcbpel/adapter/db/Ivara/IvaraToCESProxy/ReadWRChanges_IvaraDB#wsdl.interface(ReadWRChanges_IvaraDB_ptt)"/>
+      <binding.jca config="Adapters/ReadWRChanges_IvaraDB_db.jca">
+         <property name="useRejectedMessageRecovery" type="xs:string" many="false" override="may">true</property>
+         <property name="jca.retry.count" type="xs:int" many="false" override="may">2147483647</property>
+         <property name="jca.retry.interval" type="xs:int" many="false" override="may">1</property>
+         <property name="jca.retry.backoff" type="xs:int" many="false" override="may">2</property>
+         <property name="jca.retry.maxInterval" type="xs:int" many="false" override="may">120</property>
+      </binding.jca>
+      <property many="false" name="jca.retry.count" override="may" type="xs:int">4</property>
+      <property many="false" name="jca.retry.interval" override="may" type="xs:int">600</property>
+      <property many="false" name="jca.retry.backoff" override="may" type="xs:int">100</property>
+      <property many="false" name="jca.retry.maxInterval" override="may" type="xs:int">800</property>
+   </service>
+   <property many="false" name="productVersion" type="xs:string">12.2.1.2.0.161003</property>
+   <property many="false" name="compositeID" type="xs:string">2ba7f241-848d-4132-873f-603e47059db1</property>
+   <property many="false" name="oracle.composite.faultPolicyFile" type="xs:string">fault-policies.xml</property>
+   <property many="false" name="oracle.composite.faultBindingFile" type="xs:string">fault-bindings.xml</property>
+   <component name="ProcessIvaratoCES" version="2.0">
+      <implementation.bpel src="BPEL/ProcessIvaratoCES.bpel"/>
+      <componentType>
+         <service name="ReadWRChanges_IvaraDB" ui:wsdlLocation="Adapters/ReadWRChanges_IvaraDB.wsdl">
+            <interface.wsdl interface="http://xmlns.oracle.com/pcbpel/adapter/db/Ivara/IvaraToCESProxy/ReadWRChanges_IvaraDB#wsdl.interface(ReadWRChanges_IvaraDB_ptt)"/>
+         </service>
+         <reference name="UpdateWRChanges_IvaraDB" ui:wsdlLocation="Adapters/UpdateWRChanges_Ivara.wsdl">
+            <interface.wsdl interface="http://xmlns.oracle.com/pcbpel/adapter/db/Ivara/IvaraToCESProxy/UpdateWRChanges_Ivara#wsdl.interface(UpdateWRChanges_Ivara_ptt)"/>
+         </reference>
+         <reference name="NotificationService" ui:wsdlLocation="oramds:/soa/shared/workflow/NotificationService.wsdl">
+            <interface.wsdl interface="http://xmlns.oracle.com/ias/pcbpel/NotificationService#wsdl.interface(NotificationService)"/>
+         </reference>
+         <reference name="IvaraNotificationGroups" ui:wsdlLocation="oramds:/apps/epcor/ivara/composites/NotificationGroups/NotificationGroups.wsdl">
+            <interface.wsdl interface="urn:epcor:as:ivara:integration:NotificationGroups#wsdl.interface(NotificationGroupsPort)"/>
+         </reference>
+         <reference name="MyAccountAdminReference" ui:wsdlLocation="WSDLs/ProjectsService.svcWrapper.wsdl">
+            <interface.wsdl interface="http://tempuri.org/#wsdl.interface(IProjectsService)"/>
+         </reference>
+         <reference name="GmtConverterMediator.GmtConverterMediator"
+                    ui:wsdlLocation="WSDLs/GmtConverterMediatorWrapper.wsdl">
+            <interface.wsdl interface="http://xmlns.oracle.com/IvaraGenericAPI/IvaraToCESProxy/GmtConverterMediator#wsdl.interface(execute_ptt)"/>
+         </reference>
+      </componentType>
+      <property many="false" name="bpel.config.transaction" type="xs:string">required</property>
+      <property many="false" name="bpel.config.oneWayDeliveryPolicy" type="xs:string">sync</property>
+      <property name="preference.CacheSize">1000</property>
+      <property name="preference.Interface">IvaraToCES</property>
+      <property name="preference.SAGroup">IVARA INTERFACE SUPPORT</property>
+      <property name="preference.Realm">jazn.com</property>
+      <property name="preference.WaitTime">10</property>
+      <property name="preference.Icon">Class</property>
+   </component>
+   <component name="GmtConverterMediator">
+      <implementation.mediator src="Mediators/GmtConverterMediator.mplan"/>
+      <componentType>
+         <service name="GmtConverterMediator" ui:wsdlLocation="WSDLs/GmtConverterMediator.wsdl">
+            <interface.wsdl interface="http://xmlns.oracle.com/IvaraGenericAPI/IvaraToCESProxy/GmtConverterMediator#wsdl.interface(execute_ptt)"/>
+         </service>
+         <reference name="FromGmtConverter" ui:wsdlLocation="WSDLs/FromGmtConverter.wsdl">
+            <interface.wsdl interface="http://xmlns.oracle.com/pcbpel/adapter/db/IvaraGenericAPI/IvaraToCESProxy/FromGmtConverter#wsdl.interface(FromGmtConverter_ptt)"/>
+         </reference>
+      </componentType>
+   </component>
+   <reference name="UpdateWRChanges_Ivara" ui:wsdlLocation="Adapters/UpdateWRChanges_Ivara.wsdl">
+      <interface.wsdl interface="http://xmlns.oracle.com/pcbpel/adapter/db/Ivara/IvaraToCESProxy/UpdateWRChanges_Ivara#wsdl.interface(UpdateWRChanges_Ivara_ptt)"/>
+      <binding.jca config="Adapters/UpdateWRChanges_Ivara_db.jca">
+         <property name="jca.retry.count" type="xs:int" many="false" override="may">4</property>
+         <property name="jca.retry.interval" type="xs:int" many="false" override="may">1</property>
+         <property name="jca.retry.backoff" type="xs:int" many="false" override="may">2</property>
+         <property name="jca.retry.maxInterval" type="xs:int" many="false" override="may">120</property>
+      </binding.jca>
+      <property many="false" name="jca.retry.count" override="may" type="xs:int">4</property>
+      <property many="false" name="jca.retry.interval" override="may" type="xs:int">600</property>
+      <property many="false" name="jca.retry.backoff" override="may" type="xs:int">100</property>
+      <property many="false" name="jca.retry.maxInterval" override="may" type="xs:int">800</property>
+   </reference>
+   <reference name="NotificationService" ui:wsdlLocation="oramds:/soa/shared/workflow/NotificationService.wsdl">
+      <interface.wsdl interface="http://xmlns.oracle.com/ias/pcbpel/NotificationService#wsdl.interface(NotificationService)"/>
+      <binding.wsif location="oramds:/soa/shared/workflow/NotificationService.wsdl" port="http://xmlns.oracle.com/ias/pcbpel/NotificationService#wsdl.endpoint(NotificationService/JavaPort)"/>
+   </reference>
+   <reference name="IvaraNotificationGroups" ui:wsdlLocation="oramds:/apps/epcor/ivara/composites/NotificationGroups/NotificationGroups.wsdl">
+      <interface.wsdl interface="urn:epcor:as:ivara:integration:NotificationGroups#wsdl.interface(NotificationGroupsPort)"/>
+      <binding.ws location="${LocalSOAEndPoint}/soa-infra/services/Ivara/NotificationGroups/NotificationGroups?WSDL" port="urn:epcor:as:ivara:integration:NotificationGroups#wsdl.endpoint(NotificationGroups/NotificationGroupsPort_pt)" soapVersion="1.1">
+         <property many="false" name="weblogic.wsee.wsat.transaction.flowOption" type="xs:string">WSDLDriven</property>
+      </binding.ws>
+   </reference>
+   <reference name="MyAccountAdminReference" ui:wsdlLocation="WSDLs/ProjectsService.svc.wsdl">
+      <interface.wsdl interface="http://tempuri.org/#wsdl.interface(IProjectsService)"/>
+      <binding.ws location="${MyAccountAdminProjectServicesEndpoint}/CES/Admin/Controllers/ProjectsService.svc?wsdl" port="http://tempuri.org/#wsdl.endpoint(ProjectsService/BasicHttpBinding_IProjectsService)" soapVersion="1.1">
+         <property many="false" name="weblogic.wsee.wsat.transaction.flowOption" type="xs:string">WSDLDriven</property>
+         <property many="false" name="oracle.webservices.auth.username" type="xs:string">EPCOR\srv_ivaraces</property>
+         <property many="false" name="oracle.webservices.auth.password" type="xs:string">Fd5"HTU(&lt;T69fsU_>AmGzg2qG</property>
+         <property many="false" name="oracle.webservices.preemptiveBasicAuth" type="xs:string">true</property>
+      </binding.ws>
+   </reference>
+   <reference name="FromGmtConverter" ui:wsdlLocation="WSDLs/FromGmtConverter.wsdl">
+      <interface.wsdl interface="http://xmlns.oracle.com/pcbpel/adapter/db/IvaraGenericAPI/IvaraToCESProxy/FromGmtConverter#wsdl.interface(FromGmtConverter_ptt)"/>
+      <binding.jca config="WSDLs/FromGmtConverter_db.jca">
+         <property name="jca.retry.count" type="xs:int" many="false" override="may">4</property>
+         <property name="jca.retry.interval" type="xs:int" many="false" override="may">1</property>
+         <property name="jca.retry.backoff" type="xs:int" many="false" override="may">2</property>
+         <property name="jca.retry.maxInterval" type="xs:int" many="false" override="may">120</property>
+      </binding.jca>
+   </reference>
+   <wire>
+      <source.uri>ReadWRChanges_IvaraDB</source.uri>
+      <target.uri>ProcessIvaratoCES/ReadWRChanges_IvaraDB</target.uri>
+   </wire>
+   <wire>
+      <source.uri>ProcessIvaratoCES/NotificationService</source.uri>
+      <target.uri>NotificationService</target.uri>
+   </wire>
+   <wire>
+      <source.uri>ProcessIvaratoCES/IvaraNotificationGroups</source.uri>
+      <target.uri>IvaraNotificationGroups</target.uri>
+   </wire>
+   <wire>
+      <source.uri>ProcessIvaratoCES/UpdateWRChanges_IvaraDB</source.uri>
+      <target.uri>UpdateWRChanges_Ivara</target.uri>
+   </wire>
+   <wire>
+      <source.uri>ProcessIvaratoCES/MyAccountAdminReference</source.uri>
+      <target.uri>MyAccountAdminReference</target.uri>
+   </wire>
+   <wire>
+      <source.uri>ProcessIvaratoCES/GmtConverterMediator.GmtConverterMediator</source.uri>
+      <target.uri>GmtConverterMediator/GmtConverterMediator</target.uri>
+   </wire>
+   <wire>
+      <source.uri>GmtConverterMediator/FromGmtConverter</source.uri>
+      <target.uri>FromGmtConverter</target.uri>
+   </wire>
+</composite>

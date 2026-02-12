@@ -1,0 +1,679 @@
+<?xml version = "1.0" encoding = "UTF-8" ?>
+<!--
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  Oracle JDeveloper BPEL Designer
+
+  Created: Fri Mar 02 08:58:48 MST 2018
+  Author:  draghave
+  Type: BPEL 2.0 Process
+  Purpose: Empty BPEL Process
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+-->
+<process name="ProcessIvaratoCES"
+               targetNamespace="http://xmlns.oracle.com/Ivara/IvaraToCESProxy/ProcessIvaratoCES"
+               xmlns="http://docs.oasis-open.org/wsbpel/2.0/process/executable"
+               xmlns:client="http://xmlns.oracle.com/Ivara/IvaraToCESProxy/ProcessIvaratoCES"
+               xmlns:ora="http://schemas.oracle.com/xpath/extension"
+               xmlns:bpelx="http://schemas.oracle.com/bpel/extension"
+               xmlns:bpel="http://docs.oasis-open.org/wsbpel/2.0/process/executable"
+         xmlns:ns1="http://xmlns.oracle.com/pcbpel/adapter/db/Ivara/IvaraToCESProxy/ReadWRChanges_IvaraDB"
+         xmlns:data="urn:epcor:as:ivara:ws:Data"
+         xmlns:ns2="http://tempuri.org/" xmlns:ui="http://xmlns.oracle.com/soa/designer"
+          xmlns:is="http://xmlns.oracle.com/bpel/services/IdentityService"
+         xmlns:ns3="http://xmlns.oracle.com/pcbpel/adapter/db/Ivara/IvaraToCESProxy/UpdateWRChanges_Ivara"
+         xmlns:ns4="http://xmlns.oracle.com/pcbpel/adapter/db/top/UpdateWRChanges_Ivara"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xmlns:ns5="http://xmlns.oracle.com/pcbpel/adapter/db/top/ReadWRChanges_IvaraDB"
+         xmlns:ns10="http://docs.oasis-open.org/wss/2004/01"
+         xmlns:oraext="http://www.oracle.com/XSL/Transform/java/oracle.tip.pc.services.functions.ExtFunc"
+         xmlns:bpm="http://xmlns.oracle.com/bpmn20/extensions"
+         xmlns:xp20="http://www.oracle.com/XSL/Transform/java/oracle.tip.pc.services.functions.Xpath20"
+         xmlns:ess="http://xmlns.oracle.com/scheduler" xmlns:hwf="http://xmlns.oracle.com/bpel/workflow/xpath"
+         xmlns:xref="http://www.oracle.com/XSL/Transform/java/oracle.tip.xref.xpath.XRefXPathFunctions"
+         xmlns:dvm="http://www.oracle.com/XSL/Transform/java/oracle.tip.dvm.LookupValue"
+         xmlns:bpws="http://schemas.xmlsoap.org/ws/2003/03/business-process/"
+         xmlns:ng="urn:epcor:as:ivara:integration:NotificationGroups"
+         xmlns:xdk="http://schemas.oracle.com/bpel/extension/xpath/function/xdk"
+         xmlns:nts="http://xmlns.oracle.com/ias/pcbpel/NotificationService"
+         xmlns:ids="http://xmlns.oracle.com/bpel/services/IdentityService/xpath"
+         xmlns:ldap="http://schemas.oracle.com/xpath/extension/ldap"
+         xmlns:ns6="http://schemas.datacontract.org/2004/07/Epcor.MyAccount.CES.DataAccess.Models"
+         xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+         xmlns:ns7="http://www.ivaratoces.org"
+         xmlns:ns8="http://xmlns.oracle.com/IvaraGenericAPI/IvaraToCESProxy/GmtConverterMediator"
+         xmlns:ns9="http://epcor.com/wms/fmw/ivara2cesproxy/gmtconvertermediator">
+
+  <!--
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+     ORCHESTRATION LOGIC
+     Set of activities coordinating the flow of messages across the
+     services integrated within this business process
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+  -->
+  <import namespace="http://www.ivaratoces.org"
+          location="../Schemas/CustomStructures.xsd"
+          importType="http://www.w3.org/2001/XMLSchema"/>
+           <import namespace="http://docs.oasis-open.org/wss/2004/01" location="../Schemas/SOAP_Header.xsd"
+          importType="http://www.w3.org/2001/XMLSchema"/>
+  <import namespace="http://schemas.oracle.com/bpel/extension" location="../Adapters/RuntimeFault.wsdl"
+          importType="http://schemas.xmlsoap.org/wsdl/"/>
+  <import namespace="http://tempuri.org/" location="../WSDLs/ProjectsService.svcWrapper.wsdl"
+          importType="http://schemas.xmlsoap.org/wsdl/"/>
+  <import namespace="http://xmlns.oracle.com/pcbpel/adapter/db/Ivara/IvaraToCESProxy/ReadWRChanges_IvaraDB"
+          location="../Adapters/ReadWRChanges_IvaraDB.wsdl"
+          importType="http://schemas.xmlsoap.org/wsdl/" ui:processWSDL="true"/>
+           <import location="java.io.IOException" importType="http://schemas.oracle.com/bpel/extension/java"/>
+           
+
+  <partnerLinks>
+    <partnerLink name="ReadWRChanges_IvaraDB" partnerLinkType="ns1:ReadWRChanges_IvaraDB_plt"
+                 myRole="ReadWRChanges_IvaraDB_role"/>
+    <partnerLink name="UpdateWRChanges_IvaraDB" partnerLinkType="ns3:UpdateWRChanges_Ivara_plt"
+                 partnerRole="UpdateWRChanges_Ivara_role"/>
+    <partnerLink name="NotificationService" partnerLinkType="nts:NotificationServiceLink" partnerRole="NotificationServiceProvider"/>
+        <partnerLink name="IvaraNotificationGroups" partnerLinkType="ng:NotificationGroupsPartnetLink" partnerRole="NotificationGroupsRole"/>
+    <partnerLink name="MyAccountAdminReference" partnerLinkType="ns2:MyAccountAdminReference"
+                 partnerRole="IProjectsService"/>
+    <partnerLink name="GmtConverterMediator.GmtConverterMediator"
+                 partnerLinkType="ns8:GmtConverterMediator.GmtConverterMediator" partnerRole="execute_ptt"/>
+  </partnerLinks>
+  <variables>
+    <variable name="Receive_IvaraWR_receive_Input" messageType="ns1:EpcesWrChangesCollection_msg"/>
+      <variable name="SOAP_Header" element="ns10:Security"/>
+    <variable name="UpdateWRChanges_merge_Input" messageType="ns3:EpcesWrChangesCollection_msg"/>
+    <variable name="Invoke_UpdateWRChanges_Input" messageType="ns2:IProjectsService_UpdateWRChanges_InputMessage"/>
+    <variable name="Invoke_UpdateWRChanges_Output" messageType="ns2:IProjectsService_UpdateWRChanges_OutputMessage"/>
+    <variable name="Error" type="xsd:string"/>
+    <variable name="UsernameVar" type="xsd:string"/>
+    <variable name="PasswordVar" type="xsd:string"/>
+     <variable name="Content-TypeVar" type="xsd:string"/>
+     
+    <variable name="AuthorizationVar" type="xsd:string"/>
+     <variable name="GetGroups4Interface_InputVariable" messageType="ng:GetGroups4InterfaceInputMessage"/>
+              <variable name="GetGroups4Interface_OutputVariable" messageType="ng:GetGroups4InterfaceOutputMessage"/>
+               <variable name="notificationGroups" element="data:NotificationGroups"/>
+               <variable name="email" element="data:Email"/>
+    <variable name="FaultVar"
+              element="ns7:RuntimeFaultMessage"/>
+    <variable name="EmailContent"
+              element="ns7:EMailContent"/>
+    <variable name="FaultMsg" messageType="bpelx:RuntimeFaultMessage"/>
+    <variable name="ConvertFromGMT_execute_InputVariable" messageType="ns8:requestMessage"/>
+    <variable name="ConvertFromGMT_execute_OutputVariable" messageType="ns8:replyMessage"/>
+    <variable name="ConvertFromGMT_execute_InputVariable_1" messageType="ns8:requestMessage"/>
+    <variable name="ConvertFromGMT_execute_OutputVariable_1" messageType="ns8:replyMessage"/>
+    <variable name="ConvertFromGMT_execute_InputVariable_2" messageType="ns8:requestMessage"/>
+    <variable name="ConvertFromGMT_execute_OutputVariable_2" messageType="ns8:replyMessage"/>
+    <variable name="ConvertFromGMT_execute_InputVariable_3" messageType="ns8:requestMessage"/>
+    <variable name="ConvertFromGMT_execute_OutputVariable_3" messageType="ns8:replyMessage"/>
+    <variable name="ConvertFromGMT_execute_InputVariable_4" messageType="ns8:requestMessage"/>
+    <variable name="ConvertFromGMT_execute_OutputVariable_4" messageType="ns8:replyMessage"/>
+  </variables>
+  <sequence name="main">
+    <receive name="Receive_IvaraWR" partnerLink="ReadWRChanges_IvaraDB" portType="ns1:ReadWRChanges_IvaraDB_ptt"
+             operation="receive" variable="Receive_IvaraWR_receive_Input" createInstance="yes"/>
+    <flow name="Flow1">
+      <sequence name="CreatedDateSequence">
+        <if name="If5">
+          <documentation>
+            <![CDATA[StatusLastUpdatedDate provided]]>
+          </documentation>
+          <condition>string-length($Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:statusLastupdatedDt) &gt; 0</condition>
+          <sequence name="Sequence2">
+            <assign name="AssembleRequest">
+              <copy>
+                <from>$Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:statusLastupdatedDt</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$ConvertFromGMT_execute_InputVariable_4.request/ns9:ValueToConvert</to>
+              </copy>
+              <copy>
+                <from><literal>FromGMT</literal></from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$ConvertFromGMT_execute_InputVariable_4.request/ns9:ConversionType</to>
+              </copy>
+            </assign>
+            <invoke name="ConvertFromGMT" partnerLink="GmtConverterMediator.GmtConverterMediator"
+                    portType="ns8:execute_ptt" operation="execute"
+                    inputVariable="ConvertFromGMT_execute_InputVariable_4"
+                    outputVariable="ConvertFromGMT_execute_OutputVariable_4" bpelx:invokeAsDetail="no"/>
+            <assign name="ProcessResponse">
+              <copy>
+                <from>$ConvertFromGMT_execute_OutputVariable_4.reply/ns9:ConvertedValue</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:statusLastupdatedDt</to>
+              </copy>
+            </assign>
+          </sequence>
+        </if>
+      </sequence>
+      <sequence name="CommLastUpdatedDateSequence">
+        <if name="If4">
+          <documentation>
+            <![CDATA[ChangedMilestoneDate provided]]>
+          </documentation>
+          <condition>string-length($Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:changedMilestoneDate) &gt; 0</condition>
+          <sequence name="Sequence3">
+            <assign name="AssembleRequest">
+              <copy>
+                <from>$Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:changedMilestoneDate</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$ConvertFromGMT_execute_InputVariable_3.request/ns9:ValueToConvert</to>
+              </copy>
+              <copy>
+                <from><literal>FromGMT</literal></from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$ConvertFromGMT_execute_InputVariable_3.request/ns9:ConversionType</to>
+              </copy>
+            </assign>
+            <invoke name="ConvertFromGMT" partnerLink="GmtConverterMediator.GmtConverterMediator"
+                    portType="ns8:execute_ptt" operation="execute"
+                    inputVariable="ConvertFromGMT_execute_InputVariable_3"
+                    outputVariable="ConvertFromGMT_execute_OutputVariable_3" bpelx:invokeAsDetail="no"/>
+            <assign name="ProcessResponse">
+              <copy>
+                <from>$ConvertFromGMT_execute_OutputVariable_3.reply/ns9:ConvertedValue</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:changedMilestoneDate</to>
+              </copy>
+            </assign>
+          </sequence>
+        </if>
+      </sequence>
+      <sequence name="MilestoneLastUpdatedDateSequence">
+        <if name="If3">
+          <documentation>
+            <![CDATA[MilestoneLastUpdatedDate provided]]>
+          </documentation>
+          <condition>string-length($Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:milestoneLastupdatedDt) &gt; 0</condition>
+          <sequence name="Sequence4">
+            <assign name="AssembleRequest">
+              <copy>
+                <from>$Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:milestoneLastupdatedDt</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$ConvertFromGMT_execute_InputVariable_2.request/ns9:ValueToConvert</to>
+              </copy>
+              <copy>
+                <from><literal>FromGMT</literal></from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$ConvertFromGMT_execute_InputVariable_2.request/ns9:ConversionType</to>
+              </copy>
+            </assign>
+            <invoke name="ConvertFromGMT" partnerLink="GmtConverterMediator.GmtConverterMediator"
+                    portType="ns8:execute_ptt" operation="execute"
+                    inputVariable="ConvertFromGMT_execute_InputVariable_2"
+                    outputVariable="ConvertFromGMT_execute_OutputVariable_2" bpelx:invokeAsDetail="no"/>
+            <assign name="ProcessResponse">
+              <copy>
+                <from>$ConvertFromGMT_execute_OutputVariable_2.reply/ns9:ConvertedValue</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:milestoneLastupdatedDt</to>
+              </copy>
+            </assign>
+          </sequence>
+        </if>
+      </sequence>
+      <sequence name="StatusLastUpdatedDateSequence">
+        <if name="If1">
+          <documentation>
+            <![CDATA[CommLastUpdatedDate provided]]>
+          </documentation>
+          <condition>string-length($Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:commLastupdatedDt) &gt; 0</condition>
+          <sequence name="Sequence5">
+            <assign name="AssembleRequest">
+              <copy>
+                <from>$Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:commLastupdatedDt</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$ConvertFromGMT_execute_InputVariable_1.request/ns9:ValueToConvert</to>
+              </copy>
+              <copy>
+                <from><literal>FromGMT</literal></from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$ConvertFromGMT_execute_InputVariable_1.request/ns9:ConversionType</to>
+              </copy>
+            </assign>
+            <invoke name="ConvertFromGMT" partnerLink="GmtConverterMediator.GmtConverterMediator"
+                    portType="ns8:execute_ptt" operation="execute"
+                    inputVariable="ConvertFromGMT_execute_InputVariable_1"
+                    outputVariable="ConvertFromGMT_execute_OutputVariable_1" bpelx:invokeAsDetail="no"/>
+            <assign name="ProcessResponse">
+              <copy>
+                <from>$ConvertFromGMT_execute_OutputVariable_1.reply/ns9:ConvertedValue</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:commLastupdatedDt</to>
+              </copy>
+            </assign>
+          </sequence>
+        </if>
+      </sequence>
+      <sequence name="ChangedMilestoneDateSequence">
+        <if name="If2">
+          <documentation>
+            <![CDATA[CreatedDate provided]]>
+          </documentation>
+          <condition>string-length($Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:createdDt) &gt; 0</condition>
+          <sequence name="Sequence6">
+            <assign name="AssembleRequest">
+              <copy>
+                <from>$Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:createdDt</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$ConvertFromGMT_execute_InputVariable.request/ns9:ValueToConvert</to>
+              </copy>
+              <copy>
+                <from><literal>FromGMT</literal></from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$ConvertFromGMT_execute_InputVariable.request/ns9:ConversionType</to>
+              </copy>
+            </assign>
+            <invoke name="ConvertFromGMT" partnerLink="GmtConverterMediator.GmtConverterMediator"
+                    portType="ns8:execute_ptt" operation="execute" inputVariable="ConvertFromGMT_execute_InputVariable"
+                    outputVariable="ConvertFromGMT_execute_OutputVariable" bpelx:invokeAsDetail="no"/>
+            <assign name="ProcessResponse">
+              <copy>
+                <from>$ConvertFromGMT_execute_OutputVariable.reply/ns9:ConvertedValue</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:createdDt</to>
+              </copy>
+            </assign>
+          </sequence>
+        </if>
+      </sequence>
+    </flow>
+    <assign name="SetTitle">
+      <copy>
+        <from>oraext:setFlowInstanceTitle(concat($Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:ivaraid,'-',$Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:changedMilestoneType))</from>
+        <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$Error</to>
+      </copy>
+    </assign>
+    <assign name="Assign_SOAPHeader">
+      <copy>
+        <from>"EPCOR\srv_ivaraces"</from>
+        <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$SOAP_Header/ns10:UsernameToken/ns10:Username</to>
+      </copy>
+      <!--copy>
+        <from>"Fd5&quot;HTU(&lt;T69fsU_&gt;AmGzg2qG"</from>
+        <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$SOAP_Header/ns10:UsernameToken/ns10:Password</to>
+      </copy-->
+      <copy>
+        <from>xp20:current-dateTime()</from>
+        <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$SOAP_Header/ns10:UsernameToken/ns10:Created</to>
+      </copy>
+      <copy>
+        <from>"EPCOR\srv_ivaraces"</from>
+        <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$UsernameVar</to>
+      </copy>
+      <!--copy>
+        <from>"Fd5&quot;HTU(&lt;T69fsU_&gt;AmGzg2qG"</from>
+        <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$PasswordVar</to>
+      </copy-->
+      <copy>
+        <from>"text/xml; charset=UTF=8"</from>
+        <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$Content-TypeVar</to>
+      </copy>
+    </assign>
+    <assign name="XForm_UpdateWRChanges_IvaratoCES">
+      <bpelx:annotation>
+        <bpelx:pattern patternName="bpelx:transformation"></bpelx:pattern>
+      </bpelx:annotation>
+      <copy>
+        <from>ora:doXSLTransformForDoc("../Transformations/XForm_UpdateWRChanges_IvaratoCES.xsl", $Receive_IvaraWR_receive_Input.EpcesWrChangesCollection)</from>
+        <to variable="Invoke_UpdateWRChanges_Input" part="parameters"/>
+      </copy>
+    </assign>
+    <scope name="Scope_CESPortal">
+      <faultHandlers>
+        <catch faultName="bpelx:remoteFault" faultVariable="FaultVar"
+               faultMessageType="bpelx:RuntimeFaultMessage">
+               <sequence name="RemoteFaults">
+            <assign name="Assign_Error">
+              <copy>
+                <from>'ERROR'</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$Error</to>
+              </copy>
+              <!--copy>
+                <from>$FaultMsg.detail</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$FaultVar/ns7:detail</to>
+              </copy-->
+              <copy>
+                <from>$Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:ivaraid</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$UpdateWRChanges_merge_Input.EpcesWrChangesCollection/ns4:EpcesWrChanges/ns4:ivaraid</to>
+              </copy>
+              <copy>
+                <from>'Fault received from CES Invocation'</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$UpdateWRChanges_merge_Input.EpcesWrChangesCollection/ns4:EpcesWrChanges/ns4:cesError</to>
+              </copy>
+              <copy>
+                <from>'FAILED'</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$UpdateWRChanges_merge_Input.EpcesWrChangesCollection/ns4:EpcesWrChanges/ns4:callStatus</to>
+              </copy>
+              <copy>
+                <from>$Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:changeid</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$UpdateWRChanges_merge_Input.EpcesWrChangesCollection/ns4:EpcesWrChanges/ns4:changeid</to>
+              </copy>
+            </assign>
+          </sequence>
+               </catch>
+        <catchAll>
+          <sequence name="AllFaults">
+            <assign name="Assign_Error">
+              <copy>
+                <from>'ERROR'</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$Error</to>
+              </copy>
+              <copy>
+                <from>$Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:ivaraid</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$UpdateWRChanges_merge_Input.EpcesWrChangesCollection/ns4:EpcesWrChanges/ns4:ivaraid</to>
+              </copy>
+              <copy>
+                <from>'Fault received from CES Invocation'</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$UpdateWRChanges_merge_Input.EpcesWrChangesCollection/ns4:EpcesWrChanges/ns4:cesError</to>
+              </copy>
+              <copy>
+                <from>'FAILED'</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$UpdateWRChanges_merge_Input.EpcesWrChangesCollection/ns4:EpcesWrChanges/ns4:callStatus</to>
+              </copy>
+              <copy>
+                <from>$Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:changeid</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$UpdateWRChanges_merge_Input.EpcesWrChangesCollection/ns4:EpcesWrChanges/ns4:changeid</to>
+              </copy>
+            </assign>
+          </sequence>
+        </catchAll>
+      </faultHandlers>
+      <sequence name="Sequence_CES">
+   <!--     <extensionActivity>
+          <bpelx:exec name="Authenticate_CES">
+            <![CDATA[package com.epcor; 
+ 
+  
+ 
+import org.apache.http.HttpEntity; 
+ 
+import org.apache.http.HttpHost; 
+ 
+import org.apache.http.HttpResponse; 
+ 
+import org.apache.http.HttpStatus; 
+ 
+import org.apache.http.auth.AuthScope; 
+ 
+import org.apache.http.auth.NTCredentials; 
+ 
+import org.apache.http.client.methods.HttpGet; 
+ 
+import org.apache.http.client.methods.HttpPost; 
+ 
+import org.apache.http.entity.StringEntity; 
+ 
+import org.apache.http.impl.client.DefaultHttpClient; 
+ 
+import org.apache.http.protocol.BasicHttpContext; 
+ 
+import org.apache.http.protocol.HttpContext; 
+ 
+import org.apache.http.util.EntityUtils; 
+ 
+  
+ 
+public class CallSharepoint { 
+ 
+  
+ 
+  public static String callWkrp(String endPoint, String message, String userName, String password, String domain, String host, String workStation ) { 
+ 
+  
+ 
+           String responseBodyString = ""; 
+ 
+           String errorMessage = ""; 
+ 
+  
+ 
+           try { 
+ 
+  
+ 
+                DefaultHttpClient httpclient = new DefaultHttpClient(); 
+ 
+  
+ 
+                NTCredentials creds = new NTCredentials(userName.trim(), password.trim(), workStation.trim(), domain.trim()); 
+ 
+                httpclient.getCredentialsProvider().setCredentials(AuthScope.ANY, creds); 
+ 
+  
+ 
+                HttpHost target = new HttpHost(host.trim(), 80, "http"); 
+ 
+  
+ 
+                // Make sure the same context is used to execute logically related requests 
+ 
+                HttpContext localContext = new BasicHttpContext(); 
+ 
+  
+ 
+                // Execute method 
+ 
+                HttpPost httppost = new HttpPost(endPoint.trim()); 
+ 
+                httppost.setEntity(new StringEntity(message.trim(), "text/xml;charset=UTF-8", null)); 
+ 
+                HttpResponse response1 = httpclient.execute(target, httppost, localContext); 
+ 
+                HttpEntity entity1 = response1.getEntity(); 
+ 
+                String ntlmResponse = EntityUtils.toString(entity1); 
+ 
+                EntityUtils.consume(entity1); 
+ 
+  
+ 
+                responseBodyString = ntlmResponse.replaceAll("z:row", "zrow"); 
+ 
+  
+ 
+                int statusCode = response1.getStatusLine().getStatusCode(); 
+ 
+  
+ 
+                if (statusCode != HttpStatus.SC_OK) { 
+ 
+                    errorMessage = "FATAL ERROR: " + response1.getStatusLine(); 
+ 
+                    responseBodyString = errorMessage; 
+ 
+                    System.err.println(errorMessage); 
+ 
+                } 
+ 
+  
+ 
+           } catch (Exception e) { 
+ 
+               errorMessage = "FATAL ERROR: " + e.getMessage(); 
+ 
+               e.printStackTrace(); 
+ 
+               responseBodyString = errorMessage; 
+ 
+  
+ 
+               } 
+ 
+           
+ 
+           return responseBodyString; 
+ 
+       } 
+ 
+}]]>
+          </bpelx:exec>
+        </extensionActivity>-->
+        <invoke name="Invoke_CESProjectService" partnerLink="MyAccountAdminReference"
+                portType="ns2:IProjectsService" operation="UpdateWRChanges"
+                inputVariable="Invoke_UpdateWRChanges_Input" outputVariable="Invoke_UpdateWRChanges_Output"
+                bpelx:invokeAsDetail="no">
+         
+              </invoke>  
+               <!--invoke name="Invoke_CESProjectService" partnerLink="CESProjectsServices"
+                portType="ns2:IProjectsService" operation="UpdateWRChanges"
+                inputVariable="Invoke_UpdateWRChanges_Input" outputVariable="Invoke_UpdateWRChanges_Output"
+                bpelx:invokeAsDetail="no">
+                <bpelx:toProperties>
+                <bpelx:toProperty name="Username" variable="UsernameVar"/>
+                <bpelx:toProperty name="Password" variable="PasswordVar"/>
+                <bpelx:toProperty name="Content-Type" variable="Content-TypeVar"/>
+                </bpelx:toProperties>
+              </invoke-->  
+        <!--invoke name="Invoke_CESPortal" partnerLink="CESWRChangesService" portType="ns2:IProjectsService"
+                operation="UpdateWRChanges" inputVariable="Invoke_UpdateWRChanges_Input"
+                outputVariable="Invoke_UpdateWRChanges_Output" bpelx:invokeAsDetail="no" bpelx:inputHeaderVariable="SOAP_Header"/-->
+        <if name="If_CESResponse">
+          <documentation>
+            <![CDATA[SUCCESS]]>
+          </documentation>
+          <condition>$Invoke_UpdateWRChanges_Output.parameters/ns2:UpdateWRChangesResult/ns6:Success = 'true'</condition>
+          <assign name="UpdateWRChanges_Success">
+            <copy>
+              <from>$Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:ivaraid</from>
+              <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$UpdateWRChanges_merge_Input.EpcesWrChangesCollection/ns4:EpcesWrChanges/ns4:ivaraid</to>
+            </copy>
+            <copy>
+              <from>'NA'</from>
+              <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$UpdateWRChanges_merge_Input.EpcesWrChangesCollection/ns4:EpcesWrChanges/ns4:cesError</to>
+            </copy>
+            <copy>
+              <from>'SUCCESS'</from>
+              <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$UpdateWRChanges_merge_Input.EpcesWrChangesCollection/ns4:EpcesWrChanges/ns4:callStatus</to>
+            </copy>
+            <copy>
+              <from>$Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:changeid</from>
+              <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$UpdateWRChanges_merge_Input.EpcesWrChangesCollection/ns4:EpcesWrChanges/ns4:changeid</to>
+            </copy>
+          </assign>
+          <else>
+            <documentation>
+              <![CDATA[FAILED]]>
+            </documentation>
+            <assign name="UpdateWRChanges_Failed">
+              <copy>
+                <from>$Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:ivaraid</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$UpdateWRChanges_merge_Input.EpcesWrChangesCollection/ns4:EpcesWrChanges/ns4:ivaraid</to>
+              </copy>
+              <copy>
+                <from>$Invoke_UpdateWRChanges_Output.parameters/ns2:UpdateWRChangesResult/ns6:Error</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$UpdateWRChanges_merge_Input.EpcesWrChangesCollection/ns4:EpcesWrChanges/ns4:cesError</to>
+              </copy>
+              <copy>
+                <from>'FAILED'</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$UpdateWRChanges_merge_Input.EpcesWrChangesCollection/ns4:EpcesWrChanges/ns4:callStatus</to>
+              </copy>
+              <copy>
+                <from>$Receive_IvaraWR_receive_Input.EpcesWrChangesCollection/ns5:EpcesWrChanges/ns5:changeid</from>
+                <to expressionLanguage="urn:oasis:names:tc:wsbpel:2.0:sublang:xpath1.0">$UpdateWRChanges_merge_Input.EpcesWrChangesCollection/ns4:EpcesWrChanges/ns4:changeid</to>
+              </copy>
+            </assign>
+          </else>
+        </if>
+      </sequence>
+    </scope>
+    <if name="If_Faulted">
+      <documentation>
+        <![CDATA[ERROR]]>
+      </documentation>
+      <condition>$Error = 'ERROR'</condition>
+      <sequence>
+        <assign name="AssignInterface">
+          <copy>
+            <from>ora:getPreference('Interface')</from>
+            <to>$GetGroups4Interface_InputVariable.payload</to>
+          </copy>
+        </assign>
+        <invoke name="GetGroups4Interface" partnerLink="IvaraNotificationGroups" portType="ng:NotificationGroupsPort"
+                operation="getGroups4Interface" inputVariable="GetGroups4Interface_InputVariable"
+                outputVariable="GetGroups4Interface_OutputVariable" bpelx:invokeAsDetail="no"/>
+        <assign name="AssignResults">
+          <copy>
+            <from>$GetGroups4Interface_OutputVariable.payload</from>
+            <to>$notificationGroups</to>
+          </copy>
+        </assign>
+        <assign name="AssignGroupEmail">
+           <copy>
+            <from>ids:lookupGroup('IVARA INTERFACE SUPPORT')/is:email</from>
+            <to>$email</to>
+          </copy>
+          <!--copy>
+            <from>'Ivarainterfacesupport@epcor.com'</from>
+            <to>$email</to>
+          </copy-->
+        </assign>
+           <assign name="AssignUserEmail">
+              <copy>
+                <from>ids:getUserProperty('IVARA INTERFACE SUPPORT','mail')</from>
+                <to>$email</to>
+              </copy>
+            </assign>
+        
+       
+                             <scope name="Email1">
+                            <bpelx:annotation>
+                              <bpelx:pattern patternName="bpelx:email"></bpelx:pattern>
+                              <bpelx:general>
+                                <bpelx:property name="userLabel">SendNotification</bpelx:property>
+                              </bpelx:general>
+                            </bpelx:annotation>
+                            <variables>
+                              <variable name="varNotificationReq" messageType="nts:EmailNotificationRequest"/>
+                              <variable name="varNotificationResponse" messageType="nts:ArrayOfResponse"/>
+                              <variable name="NotificationServiceFaultVariable"
+                                        messageType="nts:NotificationServiceErrorMessage"/>
+                            </variables>
+                            <sequence name="Sequence1">
+            <assign name="XForm_EmailContent">
+              <bpelx:annotation>
+                <bpelx:pattern patternName="bpelx:transformation"></bpelx:pattern>
+              </bpelx:annotation>
+              <copy>
+                <from>ora:doXSLTransformForDoc("../Transformations/XForm_EmailContent.xsl", $Receive_IvaraWR_receive_Input.EpcesWrChangesCollection)</from>
+                <to variable="EmailContent"/>
+              </copy>
+            </assign>
+            <assign name="EmailParamsAssign">
+              <copy>
+                <from>string('Default')</from>
+                <to>$varNotificationReq.EmailPayload/nts:FromAccountName</to>
+              </copy>
+              <copy>
+                <from>string('')</from>
+                <to>$varNotificationReq.EmailPayload/nts:Bcc</to>
+              </copy>
+              <copy>
+                <from>string('')</from>
+                <to>$varNotificationReq.EmailPayload/nts:Cc</to>
+              </copy>
+              <copy>
+                <from>string('')</from>
+                <to>$varNotificationReq.EmailPayload/nts:ReplyToAddress</to>
+              </copy>
+              <copy>
+                <from>concat('IvataToCESProxy Service ',(ora:getFlowId()),' Failed')</from>
+                <to>$varNotificationReq.EmailPayload/nts:Subject</to>
+              </copy>
+              <copy>
+                <from>$email</from>
+                <to>$varNotificationReq.EmailPayload/nts:To</to>
+              </copy>
+              <copy>
+                <from>$EmailContent</from>
+                <to>$varNotificationReq.EmailPayload/nts:Content/nts:ContentBody</to>
+              </copy>
+              <copy>
+                <from>string('text/html; charset=UTF-8')</from>
+                <to>$varNotificationReq.EmailPayload/nts:Content/nts:MimeType</to>
+              </copy>
+            </assign>
+                              <invoke name="InvokeNotificationService" portType="nts:NotificationService"
+                                      partnerLink="NotificationService" inputVariable="varNotificationReq"
+                                      outputVariable="varNotificationResponse" operation="sendEmailNotification"/>
+          </sequence>
+                          </scope>
+      </sequence>
+      <else>
+        <documentation>
+          <![CDATA[NO ERROR]]>
+        </documentation>
+        <empty name="NoError"/>
+      </else>
+    </if>
+    <invoke name="UpdateWRChanges" partnerLink="UpdateWRChanges_IvaraDB"
+            portType="ns3:UpdateWRChanges_Ivara_ptt" operation="merge"
+            inputVariable="UpdateWRChanges_merge_Input"
+            bpelx:invokeAsDetail="no"/>
+  </sequence>
+</process>
