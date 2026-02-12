@@ -41,17 +41,11 @@ COMPOUND TRIGGER
             )
           ) AS INSPECTIONID,
 
+          /* === NEW: work order uuid from mnt.workorders.uuid === */
+          v2.WORK_ORDER_UUID AS WORK_ORDER_UUID,  -- NEW
+
           /* === Core columns (apply truncations here) === */
           SUBSTR(v2.WORK_ORDERS_NUMBER,    1, 15)  AS WORKORDER,
-          /* Workorder UUID from MNT.WORKORDERS.UUID */
-          LOWER(
-            REGEXP_REPLACE(
-              REGEXP_REPLACE(v2.WORKORDER_UUID, '-', ''),
-              '^(........)(....)(....)(....)(............)$',
-              '\\1-\\2-\\3-\\4-\\5'
-            )
-          ) AS WORKORDER_UUID,
-
           SUBSTR(v2.WORK_ORDER_TASK_TITLE, 1, 503) AS PROJECT,
           SUBSTR(v2.ASSET_NUMBER,          1, 50)  AS PO_NUMBER,
 
@@ -107,7 +101,6 @@ COMPOUND TRIGGER
             v.WORK_ORDER_TASK_UUID,
             v.DR_UUID,
             v.WORK_ORDERS_NUMBER,
-            wo.UUID AS WORKORDER_UUID,
             v.WORK_ORDER_TASK_TITLE,
             v.ASSET_NUMBER,
             v.PIPE_SEGMENT_REFERENCE,
@@ -147,12 +140,10 @@ COMPOUND TRIGGER
             v.CREATEDATE_DTTM,
             v.LASTUPDATE_DTTM,
 
-            /* ===== Sanitizer (decode entities ? strip tags/blocks ? normalize) =====
-               1) Decode &lt;, &gt;, &quot;, &#39;, &nbsp;, &amp;
-               2) Remove DOCTYPE, HEAD, STYLE, SCRIPT
-               3) Remove all remaining tags
-               4) Collapse whitespace and trim
-            */
+            /* NEW: carry workorders.uuid up to outer query */
+            wo.UUID AS WORK_ORDER_UUID, -- NEW
+
+            /* ===== Sanitizer ... ===== */
             REGEXP_REPLACE(
               REGEXP_REPLACE(
                 REGEXP_REPLACE(
@@ -160,7 +151,6 @@ COMPOUND TRIGGER
                     REGEXP_REPLACE(
                       REGEXP_REPLACE(
                         REGEXP_REPLACE(
-                          -- (1) Decode common entities
                           REPLACE(
                             REPLACE(
                               REPLACE(
@@ -178,28 +168,20 @@ COMPOUND TRIGGER
                               ),
                                       CHR(38)||'nbsp;',' '
                             ),
-                                      CHR(38)||'amp;',  CHR(38)  -- &amp; ? &
+                                      CHR(38)||'amp;',  CHR(38)
                           ),
-
-                          -- (2a) Strip DOCTYPE
                           '<!DOCTYPE[^>]*>', '', 1, 0, 'in'
                         ),
-                          -- (2b) Strip <head>...</head>
                           '<head[^>]*>.*?</head>', '', 1, 0, 'in'
                       ),
-                          -- (2c) Strip <style>...</style>
                           '<style[^>]*>.*?</style>', '', 1, 0, 'in'
                     ),
-                          -- (2d) Strip <script>...</script>
                           '<script[^>]*>.*?</script>', '', 1, 0, 'in'
                   ),
-                    -- (3) Remove any remaining tags
                     '<[^>]+>', '', 1, 0, 'n'
                 ),
-                -- (4a) Collapse whitespace
                 '\s+', ' '
               ),
-              -- (4b) Trim start/end
               '^\s+|\s+$', ''
             ) AS CLEAN_INFO_STEP
 
@@ -216,9 +198,9 @@ COMPOUND TRIGGER
 
       WHEN MATCHED THEN UPDATE SET
         t.WORKORDER                 = s.WORKORDER,
-        t.WORKORDER_UUID            = s.WORKORDER_UUID,
         t.PROJECT                   = s.PROJECT,
         t.PO_NUMBER                 = s.PO_NUMBER,
+        t.WORK_ORDER_UUID           = s.WORK_ORDER_UUID, -- NEW
         t.ADDITIONAL_INFORMATION    = s.CLEAN_INFO,
         t.PIPE_SEGMENT_REFERENCE    = s.PIPE_SEGMENT_REFERENCE,
         t.LATERAL_SEGMENT_REFERENCE = s.LATERAL_SEGMENT_REFERENCE,
@@ -258,7 +240,8 @@ COMPOUND TRIGGER
         t.LASTUPDATE_DTTM           = s.LASTUPDATE_DTTM
 
       WHEN NOT MATCHED THEN INSERT (
-        PROJECT_SID, INSPECTION_TYPE, INSPECTIONID, WORKORDER, WORKORDER_UUID, PROJECT, PO_NUMBER,
+        PROJECT_SID, INSPECTION_TYPE, INSPECTIONID, WORK_ORDER_UUID, -- NEW
+        WORKORDER, PROJECT, PO_NUMBER,
         ADDITIONAL_INFORMATION, PIPE_SEGMENT_REFERENCE, LATERAL_SEGMENT_REFERENCE,
         MANHOLE_NUMBER, MATERIAL, PIPE_USE, COVER_SHAPE, UPSTREAM_MH, DOWNSTREAM_MH,
         FEED_STATUS,
@@ -269,7 +252,8 @@ COMPOUND TRIGGER
         STREET, TOTAL_LENGTH, YEAR_CONSTRUCTED, "SIZE", DRAINAGE_AREA,
         UNKNOWN_TYPE, CREATEDATE_DTTM, LASTUPDATE_DTTM
       ) VALUES (
-        s.PROJECT_SID, s.INSPECTION_TYPE, s.INSPECTIONID, s.WORKORDER, s.WORKORDER_UUID, s.PROJECT, s.PO_NUMBER,
+        s.PROJECT_SID, s.INSPECTION_TYPE, s.INSPECTIONID, s.WORK_ORDER_UUID, -- NEW
+        s.WORKORDER, s.PROJECT, s.PO_NUMBER,
         s.CLEAN_INFO, s.PIPE_SEGMENT_REFERENCE, s.LATERAL_SEGMENT_REFERENCE,
         s.MANHOLE_NUMBER, s.MATERIAL, s.PIPE_USE, s.COVER_SHAPE, s.UPSTREAM_MH, s.DOWNSTREAM_MH,
         'NEW',
@@ -285,3 +269,4 @@ COMPOUND TRIGGER
   END AFTER STATEMENT;
 
 END TRG_CR_INSPECT;
+/
